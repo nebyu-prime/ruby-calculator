@@ -1,16 +1,39 @@
 #!/usr/bin/env ruby
 
 def safe_expression?(s)
-  s.strip!
+  s = s.to_s.strip
   return false if s.empty?
-  # allow digits, whitespace, + - * / ( ) . and ^ for power
-  !!(s =~ /\A[0-9\s+\-*/().^]+\z/)
+  return false if s.length > 200
+  # allow digits, whitespace and operators: + - * / ( ) . ^
+  return false unless s =~ /\A[0-9\s+\-*\/().\^]+\z/
+
+  operators = %w[+ - * / ^]
+  # disallow three or more operators in a row
+  return false if s =~ /[+\-*\/\^]{3,}/
+
+  # disallow two different consecutive operators (allow '**')
+  s.chars.each_cons(2) do |a, b|
+    if operators.include?(a) && operators.include?(b)
+      next if a == '*' && b == '*'
+      return false
+    end
+  end
+
+  # cannot end with an operator (except ')')
+  last = s[-1]
+  return false if operators.include?(last)
+
+  # if starts with operator, only + or - allowed (unary)
+  first = s[0]
+  return false if operators.include?(first) && !['+', '-'].include?(first)
+
+  true
 end
 
 def eval_expression(s)
   s = s.gsub('^', '**')
   begin
-    result = eval(s)
+    result = Kernel.eval(s)
     puts result
   rescue ZeroDivisionError
     warn "Error: Division by zero"
